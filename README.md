@@ -1,11 +1,10 @@
-# dccdl-repo
+# dccdl
  Small golang program to download DCC/XDCC files
 
 ## Usage
 ```shell
 ./dccdl -i <irc server ip> -p <port, default 6667> -b <bot name> -c <channel, without #> -f <file id, without #>
 ```
-Example:
 ![Example file](example.png)
 
 You can find files from the many XDCC search engines on the web
@@ -17,4 +16,4 @@ go build .
 ```
 
 ## Disclaimer
-This tool is provided for authorized use. Any illegal use will not get any support
+This tool is provided for authorized use only. Any unauthorized use will not get any support
