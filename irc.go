@@ -24,7 +24,7 @@ var username string
 
 func (server irc_server) xdcc_download(channel string, bot string, file_id int) dcc_connection {
 	var output dcc_connection
-	var start time.Time
+	start := time.Now()
 	lock := true
 
 	fmt.Println("Connecting...")
@@ -48,15 +48,20 @@ func (server irc_server) xdcc_download(channel string, bot string, file_id int) 
 		if s_tmp != "\n" {
 			line += s_tmp
 		} else {
-			if time.Since(start).Seconds() >= 90 { //1 min
+			if time.Since(start).Seconds() >= 60 {
 				fmt.Println("Timeout")
 				return dcc_connection{}
 			}
 			if strings.HasPrefix(line, "PING :") {
 				socket.Write([]byte(strings.Replace(line, "PING", "PONG", 1)))
 			}
+
+			words := strings.Split(line, " ")
+
+			//fmt.Printf("xxxxxx->%s\n", line)
+
 			if lock {
-				if strings.Split(line, " ")[1] == "266" {
+				if len(words) > 0 && words[1] == "001" {
 					lock = false
 					fmt.Println("Session established")
 					socket.Write([]byte(fmt.Sprintf("JOIN #%s\r\n", channel)))
@@ -65,34 +70,29 @@ func (server irc_server) xdcc_download(channel string, bot string, file_id int) 
 					fmt.Println("Requesting file...")
 				}
 			} else {
-				if strings.Contains(line, "PRIVMSG") && strings.Contains(line, ":\x01DCC SEND") {
-					dcc_data := strings.Split(line, " ")
-					socket.Write([]byte(fmt.Sprintf("PRIVMSG %s :DCC ACCEPT %s %s 0\r\n", bot, dcc_data[5], dcc_data[7])))
-					output.filename = dcc_data[5]
-					ip, err2 := strconv.Atoi(dcc_data[6])
+				if len(words) > 3 && words[1] == "PRIVMSG" && strings.EqualFold(words[2], username) && words[3] == ":\x01DCC" && words[4] == "SEND" {
+					socket.Write([]byte(fmt.Sprintf("PRIVMSG %s :DCC ACCEPT %s %s 0\r\n", bot, words[5], words[7])))
+					output.filename = words[5]
+					ip, err2 := strconv.Atoi(words[6])
 					if err2 != nil {
-						fmt.Printf("Invalid IP address '%s'\n", dcc_data[6])
+						fmt.Printf("Invalid IP address '%s'\n", words[6])
 						return dcc_connection{}
 					}
 					output.ip = ip_convert(ip)
-					output.port, err2 = strconv.Atoi(dcc_data[7])
+					output.port, err2 = strconv.Atoi(words[7])
 					if err2 != nil {
-						fmt.Printf("Invalid port number '%s'\n", dcc_data[7])
+						fmt.Printf("Invalid port number '%s'\n", words[7])
 						return dcc_connection{}
 					}
-					output.filesize, err2 = strconv.Atoi(strings.Split(dcc_data[8], "\x01")[0])
+					output.filesize, err2 = strconv.Atoi(strings.Split(words[8], "\x01")[0])
 					if err2 != nil {
-						fmt.Printf("Invalid file size '%s'\n", dcc_data[8])
+						fmt.Printf("Invalid file size '%s'\n", words[8])
 						return dcc_connection{}
 					}
 					break
 				}
-				if strings.Contains(line, username) && strings.Contains(line, bot) && strings.Split(line, " ")[1] != "353" && !strings.Contains(line, ":\x01DCC SEND") {
-					if strings.Contains(line, "NOTICE") {
-						fmt.Printf("Message from server: %s\n", strings.Split(line, "NOTICE "+username+" :** ")[1])
-					} else {
-						fmt.Println(line)
-					}
+				if words[1] == "NOTICE" && strings.EqualFold(words[2], username) {
+					fmt.Printf("Message from server: %s\n", strings.Join(words[3:], " ")[1:])
 				}
 			}
 			line = ""

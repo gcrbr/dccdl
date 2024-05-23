@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -54,10 +55,13 @@ func main() {
 			f.Write(tmp)
 			written += 1
 			percent = (float64(written) / float64(file.filesize)) * 100
-			if percent > 100 {
+			if percent >= 100 {
 				percent = 100
 			}
-			fmt.Printf("\rDownloaded %.2f%%", percent)
+			fmt.Printf("[%s%s] Downloaded %.2f%%         \r", strings.Repeat("|", int(percent/3)), strings.Repeat(" ", 33-int(percent/3)), percent)
+			if err == io.EOF || tmp == nil || written >= file.filesize {
+				break
+			}
 		}
 		if err != nil && err != io.EOF {
 			fmt.Printf("\nDownload error: %s", err)
